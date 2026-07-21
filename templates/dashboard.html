@@ -1,0 +1,151 @@
+{% extends "base.html" %}
+{% block title %}Dashboard - Expense Tracker{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
+
+{% block content %}
+
+{% if budget_alert %}
+<div class="alert alert-{{ budget_alert.level }} d-flex align-items-center" role="alert">
+  <i class="bi bi-exclamation-triangle-fill me-2"></i>
+  <div>{{ budget_alert.message }} You've used {{ budget_alert.pct }}% of your ₹{{ '%.2f'|format(current_user.monthly_budget) }} monthly budget.</div>
+</div>
+{% endif %}
+
+<div class="row g-3 mb-4">
+  <div class="col-md-4">
+    <div class="card stat-card stat-income">
+      <div class="card-body d-flex justify-content-between align-items-center">
+        <div>
+          <div class="stat-label">Total Income</div>
+          <div class="stat-value">₹{{ '%.2f'|format(total_income) }}</div>
+        </div>
+        <i class="bi bi-cash-stack stat-icon"></i>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="card stat-card stat-expense">
+      <div class="card-body d-flex justify-content-between align-items-center">
+        <div>
+          <div class="stat-label">Total Expenses</div>
+          <div class="stat-value">₹{{ '%.2f'|format(total_expense) }}</div>
+        </div>
+        <i class="bi bi-credit-card stat-icon"></i>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="card stat-card stat-balance">
+      <div class="card-body d-flex justify-content-between align-items-center">
+        <div>
+          <div class="stat-label">Current Balance</div>
+          <div class="stat-value">₹{{ '%.2f'|format(balance) }}</div>
+        </div>
+        <i class="bi bi-piggy-bank stat-icon"></i>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-3 mb-4">
+  <div class="col-lg-6">
+    <div class="card h-100">
+      <div class="card-header">Expense Distribution by Category</div>
+      <div class="card-body"><canvas id="pieChart" height="220"></canvas></div>
+    </div>
+  </div>
+  <div class="col-lg-6">
+    <div class="card h-100">
+      <div class="card-header">Monthly Expense Summary ({{ current_year }})</div>
+      <div class="card-body"><canvas id="barChart" height="220"></canvas></div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-3 mb-4">
+  <div class="col-12">
+    <div class="card">
+      <div class="card-header">Income vs Expense (Last 6 Months)</div>
+      <div class="card-body"><canvas id="lineChart" height="100"></canvas></div>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header d-flex justify-content-between align-items-center">
+    Recent Transactions
+    <div>
+      <a href="{{ url_for('income.add_income') }}" class="btn btn-sm btn-success me-1"><i class="bi bi-plus"></i> Income</a>
+      <a href="{{ url_for('expense.add_expense') }}" class="btn btn-sm btn-danger"><i class="bi bi-plus"></i> Expense</a>
+    </div>
+  </div>
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-hover mb-0 align-middle">
+        <thead><tr><th>Title</th><th>Category</th><th>Type</th><th>Date</th><th class="text-end">Amount</th></tr></thead>
+        <tbody>
+          {% for t in recent %}
+          <tr>
+            <td>{{ t.title }}</td>
+            <td><span class="badge text-bg-light">{{ t.category }}</span></td>
+            <td>{% if t.type == 'income' %}<span class="badge text-bg-success">Income</span>{% else %}<span class="badge text-bg-danger">Expense</span>{% endif %}</td>
+            <td>{{ t.date }}</td>
+            <td class="text-end {{ 'text-success' if t.type=='income' else 'text-danger' }}">
+              {{ '+' if t.type=='income' else '-' }}₹{{ '%.2f'|format(t.amount) }}
+            </td>
+          </tr>
+          {% else %}
+          <tr><td colspan="5" class="text-center text-muted py-4">No transactions yet. Add your first income or expense!</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const monthLabels = {{ month_names|tojson }};
+const monthlyTotals = {{ monthly_totals|tojson }};
+const categoryLabels = {{ category_labels|tojson }};
+const categoryValues = {{ category_values|tojson }};
+
+const palette = ['#4f46e5','#06b6d4','#f59e0b','#ef4444','#10b981','#8b5cf6','#ec4899','#84cc16'];
+
+new Chart(document.getElementById('pieChart'), {
+  type: 'pie',
+  data: {
+    labels: categoryLabels.length ? categoryLabels : ['No expenses yet'],
+    datasets: [{ data: categoryValues.length ? categoryValues : [1], backgroundColor: palette }]
+  },
+  options: { responsive: true, plugins: { legend: { position: 'bottom' } } }
+});
+
+new Chart(document.getElementById('barChart'), {
+  type: 'bar',
+  data: {
+    labels: monthLabels,
+    datasets: [{ label: 'Expenses', data: monthlyTotals, backgroundColor: '#ef4444aa', borderRadius: 4 }]
+  },
+  options: { responsive: true, plugins: { legend: { display: false } } }
+});
+
+fetch("{{ url_for('main.income_vs_expense_api') }}")
+  .then(r => r.json())
+  .then(data => {
+    new Chart(document.getElementById('lineChart'), {
+      type: 'line',
+      data: {
+        labels: data.labels,
+        datasets: [
+          { label: 'Income', data: data.income, borderColor: '#10b981', backgroundColor: '#10b98133', tension: 0.35, fill: true },
+          { label: 'Expense', data: data.expense, borderColor: '#ef4444', backgroundColor: '#ef444433', tension: 0.35, fill: true }
+        ]
+      },
+      options: { responsive: true, plugins: { legend: { position: 'bottom' } } }
+    });
+  });
+</script>
+{% endblock %}

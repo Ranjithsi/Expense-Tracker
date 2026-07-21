@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block title %}Income - Expense Tracker{% endblock %}
+{% block page_title %}Income{% endblock %}
+{% block content %}
+
+<div class="card mb-3">
+  <div class="card-body">
+    <form method="GET" class="row g-2 align-items-end">
+      <div class="col-md-3">
+        <label class="form-label small">Search title</label>
+        <input type="text" name="search" class="form-control form-control-sm" value="{{ request.args.get('search','') }}" placeholder="Search...">
+      </div>
+      <div class="col-md-2">
+        <label class="form-label small">Category</label>
+        <select name="category" class="form-select form-select-sm">
+          <option value="">All</option>
+          {% for c in categories %}
+          <option value="{{ c.name }}" {{ 'selected' if request.args.get('category')==c.name }}>{{ c.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-2">
+        <label class="form-label small">Month</label>
+        <input type="month" name="month" class="form-control form-control-sm" value="{{ request.args.get('month','') }}">
+      </div>
+      <div class="col-md-2">
+        <label class="form-label small">Min Amount</label>
+        <input type="number" step="0.01" name="min_amount" class="form-control form-control-sm" value="{{ request.args.get('min_amount','') }}">
+      </div>
+      <div class="col-md-2">
+        <label class="form-label small">Max Amount</label>
+        <input type="number" step="0.01" name="max_amount" class="form-control form-control-sm" value="{{ request.args.get('max_amount','') }}">
+      </div>
+      <div class="col-md-1 d-grid">
+        <button class="btn btn-sm btn-primary" type="submit"><i class="bi bi-funnel"></i></button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header d-flex justify-content-between align-items-center">
+    All Income ({{ records|length }})
+    <a href="{{ url_for('income.add_income') }}" class="btn btn-sm btn-success"><i class="bi bi-plus-lg"></i> Add Income</a>
+  </div>
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-hover mb-0 align-middle">
+        <thead><tr><th>Title</th><th>Category</th><th>Date</th><th>Notes</th><th class="text-end">Amount</th><th class="text-end">Actions</th></tr></thead>
+        <tbody>
+          {% for r in records %}
+          <tr>
+            <td>{{ r.title }}</td>
+            <td><span class="badge text-bg-light">{{ r.category.name }}</span></td>
+            <td>{{ r.date }}</td>
+            <td class="text-muted small">{{ r.notes or '-' }}</td>
+            <td class="text-end text-success">+₹{{ '%.2f'|format(r.amount) }}</td>
+            <td class="text-end">
+              <a href="{{ url_for('income.edit_income', income_id=r.id) }}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-pencil"></i></a>
+              <form method="POST" action="{{ url_for('income.delete_income', income_id=r.id) }}" class="d-inline" onsubmit="return confirm('Delete this income entry?');">
+                <button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+              </form>
+            </td>
+          </tr>
+          {% else %}
+          <tr><td colspan="6" class="text-center text-muted py-4">No income records found.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

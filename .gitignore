@@ -1,0 +1,9 @@
+__pycache__/
+*.pyc
+.env
+venv/
+env/
+instance/
+static/images/receipts/*
+!static/images/receipts/.gitkeep
+.DS_Store
